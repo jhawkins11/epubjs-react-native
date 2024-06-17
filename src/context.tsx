@@ -59,6 +59,7 @@ enum Types {
   SET_BOOKMARKS = 'SET_BOOKMARKS',
   SET_IS_BOOKMARKED = 'SET_IS_BOOKMARKED',
   SET_FLOW = 'SET_FLOW',
+  SET_CURRENT_PAGE_TEXT = 'SET_CURRENT_PAGE_TEXT',
 }
 
 type BookPayload = {
@@ -92,6 +93,10 @@ type BookPayload = {
   [Types.SET_BOOKMARKS]: Bookmark[];
   [Types.SET_IS_BOOKMARKED]: boolean;
   [Types.SET_FLOW]: Flow;
+  [Types.SET_CURRENT_PAGE_TEXT]: {
+    page: string;
+    chapter: string;
+  };
 };
 
 type BookActions = ActionMap<BookPayload>[keyof ActionMap<BookPayload>];
@@ -127,6 +132,10 @@ type InitialState = {
   bookmarks: Bookmark[];
   isBookmarked: boolean;
   flow: Flow;
+  currentText: {
+    page: string;
+    chapter: string;
+  };
 };
 
 export const defaultTheme: Theme = {
@@ -186,6 +195,10 @@ const initialState: InitialState = {
   bookmarks: [],
   isBookmarked: false,
   flow: 'auto',
+  currentText: {
+    page: '',
+    chapter: '',
+  },
 };
 
 function bookReducer(state: InitialState, action: BookActions): InitialState {
@@ -299,6 +312,11 @@ function bookReducer(state: InitialState, action: BookActions): InitialState {
       return {
         ...state,
         flow: action.payload,
+      };
+    case Types.SET_CURRENT_PAGE_TEXT:
+      return {
+        ...state,
+        currentText: action.payload,
       };
     default:
       return state;
@@ -621,6 +639,12 @@ export interface ReaderContextProps {
    * Private
    */
   setFlow: (flow: Flow) => void;
+  setCurrentPageText: (text: { page: string; chapter: string }) => void;
+  getCurrentPageText: (location: Location) => void;
+  currentText: {
+    page: string;
+    chapter: string;
+  };
 }
 
 const ReaderContext = createContext<ReaderContextProps>({
@@ -719,6 +743,12 @@ const ReaderContext = createContext<ReaderContextProps>({
   changeFlow: () => {},
   setFlow: () => {},
   flow: 'auto',
+  setCurrentPageText: () => {},
+  getCurrentPageText: () => {},
+  currentText: {
+    page: '',
+    chapter: '',
+  },
 });
 
 function ReaderProvider({ children }: { children: React.ReactNode }) {
@@ -1234,6 +1264,38 @@ function ReaderProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: Types.SET_FLOW, payload: flow });
   }, []);
 
+  const setCurrentPageText = useCallback(
+    (text: { page: string; chapter: string }) => {
+      dispatch({ type: Types.SET_CURRENT_PAGE_TEXT, payload: text });
+    },
+    []
+  );
+
+  const getCurrentPageText = useCallback((location: Location) => {
+    webViewInjectFunctions.injectJavaScript(
+      book,
+      `
+      const location = ${JSON.stringify(location)};
+      const cfi = makeRangeCfi(location.start.cfi, location.end.cfi);
+      let chapterText = '';
+      var iframe = document.querySelector('iframe');
+      if (iframe) {
+        chapterText = iframe.contentWindow.document.body.innerText || '';
+      } else {
+        chapterText = document.body.innerText || '';
+      }
+
+      book.getRange(cfi).then(range => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: "onGetPageText",
+          page: range.toString(),
+          chapter: chapterText,
+        }));
+      }).catch(error => alert(error?.message));
+    `
+    );
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       registerBook,
@@ -1313,6 +1375,9 @@ function ReaderProvider({ children }: { children: React.ReactNode }) {
       changeFlow,
       setFlow,
       flow: state.flow,
+      setCurrentPageText,
+      getCurrentPageText,
+      currentText: state.currentText,
     }),
     [
       changeFontFamily,
@@ -1382,6 +1447,9 @@ function ReaderProvider({ children }: { children: React.ReactNode }) {
       changeFlow,
       setFlow,
       state.flow,
+      setCurrentPageText,
+      getCurrentPageText,
+      state.currentText,
     ]
   );
   return (

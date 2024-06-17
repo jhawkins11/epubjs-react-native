@@ -47,6 +47,7 @@ export function useReader() {
     changeFlow,
     isRendering,
     flow,
+    currentText,
   } = useContext(ReaderContext);
 
   return {
@@ -94,6 +95,7 @@ export function useReader() {
     changeFlow,
     isRendering,
     flow,
+    currentText,
   } as Pick<
     ReaderContextProps,
     | 'changeFontSize'
@@ -140,5 +142,6 @@ export function useReader() {
     | 'changeFlow'
     | 'isRendering'
     | 'flow'
+    | 'currentText'
   >;
 }

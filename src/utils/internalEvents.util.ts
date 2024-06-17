@@ -22,6 +22,7 @@ const INTERNAL_EVENTS = [
   'onRemoveBookmark',
   'onRemoveBookmarks',
   'onUpdateBookmark',
+  'onGetPageText',
 ];
 
 export default INTERNAL_EVENTS;

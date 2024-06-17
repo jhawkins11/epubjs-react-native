@@ -107,6 +107,8 @@ export function View({
     currentLocation: currLoc,
     setIsSearching,
     setFlow,
+    setCurrentPageText,
+    getCurrentPageText,
   } = useContext(ReaderContext);
   const book = useRef<WebView>(null);
   const [selectedText, setSelectedText] = useState<{
@@ -352,6 +354,11 @@ export function View({
       return onChangeBookmarks(Bookmarks);
     }
 
+    if (type === 'onGetPageText') {
+      const { page, chapter } = parsedEvent;
+      setCurrentPageText({ page, chapter });
+    }
+
     return () => {};
   };
 
@@ -406,6 +413,12 @@ export function View({
   useEffect(() => {
     if (book.current) registerBook(book.current);
   }, [registerBook]);
+
+  useEffect(() => {
+    if (book.current && currLoc) {
+      getCurrentPageText(currLoc);
+    }
+  }, [currLoc]);
 
   return (
     <GestureHandler
